@@ -18,14 +18,14 @@ for (row in 1:nrow(df_bmis)) {
   print(row)
   factor=df_bmis[row, "factors"]
   print(factor)
-  setwd("/filepath")  
+  setwd("/Volumes/040/working/data/MVMR files/")  
 
   #Read in top SNPs in exposure 1 
   exposure1 <- read.table(paste(factor, "_snp_list.txt", sep=""), header=T)
   exposure1$exposure=c(factor)
   #Read in / extract summary data for top SNPs in exposure 2 
-  exposure2 <- read.table("nsp_snp_list.txt", header=T)
-  exposure2$exposure=c("nsp")
+  exposure2 <- read.table("afs_snp_list.txt", header=T)
+  exposure2$exposure=c("afs")
   #Exposures
   exposure1SNPs=as.character(exposure1$SNP)
   exposure2SNPs=as.character(exposure2$SNP)
@@ -56,7 +56,7 @@ for (row in 1:nrow(df_bmis)) {
   
   #Extract exposure 1 SNPs from exposure 2 
   outcome2 <- read_outcome_data(
-    filename="nsp_allsnps.txt",
+    filename="afs_allsnps.txt",
     snps = exposure1$SNP, 
     sep = "\t",
     snp_col = "SNP",
@@ -67,7 +67,7 @@ for (row in 1:nrow(df_bmis)) {
     pval_col = "pval",
     eaf_col = "eaf"
   )
-  outcome2$outcome=c("nsp")
+  outcome2$outcome=c("afs")
   n_occur <- data.frame(table(outcome2$SNP))
   n_occur <- data.frame(n_occur[n_occur$Freq > 1,])
   outcome2 = outcome2[!(outcome2$SNP %in% n_occur$Var1),]
@@ -77,8 +77,7 @@ for (row in 1:nrow(df_bmis)) {
   dat1 <- harmonise_data(exposure1, outcome2)
   dat1<-dat1[!(dat1$remove=="TRUE"),]
   
-  
-  #Extract exposure 2 SNPs from exposure 2
+  #Extract exposure 2 SNPs from exposure 1
   exposure2 <- read_exposure_data(
     filename=paste(factor, "_allsnps.txt", sep=""),
     sep = "\t",
@@ -96,7 +95,6 @@ for (row in 1:nrow(df_bmis)) {
   n_occur <- data.frame(n_occur[n_occur$Freq > 1,])
   exposure2 = exposure2[!(exposure2$SNP %in% n_occur$Var1),]
   
-  #Extract exposure 2 SNPs from exposure 1
   outcome1 <- read_outcome_data(
     filename=paste(factor, "_allsnps.txt", sep=""),
     snps = exposure2$SNP, 
@@ -140,7 +138,7 @@ for (row in 1:nrow(df_bmis)) {
   
   #Extract exposure 2 SNPs from exposure 2
   outcome4 <- read_outcome_data(
-    filename="nsp_allsnps.txt",
+    filename="afs_allsnps.txt",
     snps = exposure2$SNP, 
     sep = "\t",
     snp_col = "SNP",
@@ -151,7 +149,7 @@ for (row in 1:nrow(df_bmis)) {
     pval_col = "pval",
     eaf_col = "eaf"
   )
-  outcome4$outcome=c("nsp")
+  outcome4$outcome=c("afs")
   n_occur <- data.frame(table(outcome4$SNP))
   n_occur <- data.frame(n_occur[n_occur$Freq > 1,])
   outcome4 = outcome4[!(outcome4$SNP %in% n_occur$Var1),]
@@ -166,12 +164,11 @@ for (row in 1:nrow(df_bmis)) {
   dat <- ieugwasr::ld_clump(dat)
   dat$rsid = NULL
   dat=dat[,c(1,4,5,7,9, 13:19,28:30)]
-  #double check ordering of column names 
   names(dat)=c("SNP", "effect_allele.exposure", "other_allele.exposure",
-               "beta.exposure",  "eaf.exposure","id.exposure","se.exposure",
-               "pval.exposure" ,"exposure","mr_keep.exposure","pval_origin.exposure",
+               "beta.exposure",  "eaf.exposure","id.exposure","pval.exposure",
+               "se.exposure" ,"exposure","mr_keep.exposure","pval_origin.exposure",
                "data_source.exposure", "samplesize.exposure","pval", "id")
-  write.csv(dat, paste(factor, "_nsp_exposures.csv", sep=""))
+  write.csv(dat, paste(factor, "_afs_exposures.csv", sep=""))
   exposure_SNPs =unique(dat$SNP)
   exposures=exposures[exposures$SNP %in% exposure_SNPs, ]
   #Extract SNPs for both exposures from outcome dataset 
@@ -189,23 +186,23 @@ for (row in 1:nrow(df_bmis)) {
   #dat <- dat[dat$SNP %in% outcome_dat$SNP,]
   dat <- harmonise_data(dat, outcome_dat, action=2)
   dat = dat[dat$ambiguous=="FALSE",]
-  write.csv(dat, paste(factor, "_nsp_exposures_outcome_harmonised_opc.csv", sep=""))
+  write.csv(dat, paste(factor, "_afs_exposures_outcome_harmonised_opc.csv", sep=""))
 
-  #use MVMR package
+  #use Wes's MVMR package
   library(devtools)
   #install.packages("remotes")
   library(remotes)
   #install_github("WSpiller/MVMR", build_opts = c("--no-resave-data", "--no-manual"), build_vignettes = T)
   library(MVMR)
   
-  XGs <- read.csv(paste(factor, "_nsp_exposures.csv", sep=""))
-  YG <- read.csv(paste(factor, "_nsp_exposures_outcome_harmonised_opc.csv", sep=""))
+  XGs <- read.csv(paste(factor, "_afs_exposures.csv", sep=""))
+  YG <- read.csv(paste(factor, "_afs_exposures_outcome_harmonised_opc.csv", sep=""))
   
   
   XGs <- XGs[XGs$SNP %in% exposure_SNPs,]
   YG <- YG[YG$SNP %in% exposure_SNPs,]
   
-  XGs = XGs[,c(2,5,8,10)]
+  XGs = XGs[,c(2,5,9,10)]
   colnames(XGs) = c("SNP", "xg", "xgse", "Exposure")
   
   
@@ -235,13 +232,13 @@ for (row in 1:nrow(df_bmis)) {
  
   print(names(XGs_betas))  
   
+  
   #MVMR-IVW
   mr_mvivw <- mr_mvivw(mr_mvinput(bx = as.matrix(cbind(XGs_betas[2], XGs_betas[3])), bxse = as.matrix(cbind(XGs_se[2], XGs_se[3])), by = YG$yg, byse =YG$ygse))
   mr_mvegger <- mr_mvegger(mr_mvinput(bx = as.matrix(cbind(XGs_betas[2], XGs_betas[3])), bxse = as.matrix(cbind(XGs_se[2], XGs_se[3])), by = YG$yg, byse =YG$ygse), orientate = 1)
   strength_mvmr <- strength_mvmr(mvmr)
   pleiotropy_mvmr <- pleiotropy_mvmr(mvmr)
   
-  #exposure1
   #exposure1
   df <- data.frame(matrix(ncol = 14, nrow = 0))
   colnames(df)=c("b", "se", "lci", "uci", "pval", 'or', 'or_lci95', 'or_uci95', "nsnps", "exposure", "model", "F-stat", "Qstat", "Qpval")
@@ -321,6 +318,5 @@ for (row in 1:nrow(df_bmis)) {
   df[5,9] = as.matrix(mr_mvivw@SNPs)
   df[5,10] = "intercept" 
   df[5,11] = "Egger"
-  write.table(df, file=paste("nsp_", factor, "_opc.txt", sep=""), quote=F, row.names=F, sep="\t")
-  
+  write.table(df, file=paste("afs_", factor, "_opc.txt", sep=""), quote=F, row.names=F, sep="\t")
 }  
